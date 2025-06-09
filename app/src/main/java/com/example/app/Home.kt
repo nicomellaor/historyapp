@@ -1,12 +1,15 @@
 package com.example.app
 
 import TransactionRecord
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -63,6 +66,8 @@ import com.example.app.ui.theme.ColorFondo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import toMap
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import kotlin.math.abs
 
 class Home : ComponentActivity() {
@@ -80,6 +85,7 @@ class Home : ComponentActivity() {
     }
 }
 
+@SuppressLint("NewApi")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomePage(cuenta: String, onBack: () -> Unit) {
@@ -208,13 +214,16 @@ fun InfoCuenta(ejemplos: List<Map<String, Any>>){
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun AgregarMovButton(cuentas: List<Map<String, Any>>, cuenta: String, scope: CoroutineScope, accountsPreferences: AccountsPreferences) {
     var showDialog by remember { mutableStateOf(false) }
     // Variables de estado
     var monto by remember { mutableStateOf("") }
     var mensaje by remember { mutableStateOf("") }
-    var fecha by remember { mutableStateOf("") }
+    var fecha by remember { mutableStateOf(LocalDate.now()) }
+    val formatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
+    var fechaText by remember { mutableStateOf(LocalDate.now().format(formatter)) }
     val total = TotalCuenta(cuentas)
 
     Button(
@@ -252,10 +261,19 @@ fun AgregarMovButton(cuentas: List<Map<String, Any>>, cuenta: String, scope: Cor
                     )
                     Spacer(Modifier.height(8.dp))
                     TextField(
-                        value = fecha,
-                        onValueChange = { fecha = it },
-                        label = { Text("Fecha yyyy-MM-dd") },
+                        value = fechaText,
+                        onValueChange = { input ->
+                            fechaText = input
+                            runCatching { LocalDate.parse(input, formatter) }
+                                .onSuccess {
+                                    fecha = it
+                                }
+                        },
+                        label = { Text("Fecha (yyyy-MM-dd)") },
                         modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number
+                        )
                     )
                 }
             },
@@ -263,7 +281,7 @@ fun AgregarMovButton(cuentas: List<Map<String, Any>>, cuenta: String, scope: Cor
                 Button(
                     onClick = {
                         // Lógica para guardar
-                        if (monto.isNotBlank() && mensaje.isNotBlank() && fecha.isNotBlank()){
+                        if (monto.isNotBlank() && mensaje.isNotBlank()){
                             scope.launch {
                                 try {
                                     val id = accountsPreferences.generateId(cuenta)
@@ -271,7 +289,7 @@ fun AgregarMovButton(cuentas: List<Map<String, Any>>, cuenta: String, scope: Cor
                                     accountsPreferences.addTransaction(cuenta, transaction)
                                     monto = ""
                                     mensaje = ""
-                                    fecha = ""
+                                    fecha = LocalDate.now()
                                     showDialog = false
                                 } catch (e: Exception) {
                                     println("Exception message: ${e.message}")

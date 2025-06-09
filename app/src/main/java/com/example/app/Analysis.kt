@@ -40,12 +40,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -60,7 +63,7 @@ import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
-import java.time.LocalDateTime
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 class Analysis : ComponentActivity() {
@@ -83,18 +86,12 @@ class Analysis : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PantallaAnalisis(cuenta: String, onBack: () -> Unit) {
+    val context = LocalContext.current
+    // Instancia de DataStore
+    val accountsPreferences = AccountsPreferences(context)
+    val scope = rememberCoroutineScope()
 
-    val months = listOf("Marzo", "Abril", "Mayo", "Junio", "Julio")
-    // userPreferences
-    val fechas = listOf(
-        LocalDateTime.of(2024, 1, 1, 0, 0),
-        LocalDateTime.of(2024, 2, 1, 0, 0),
-        LocalDateTime.of(2024, 3, 1, 0, 0),
-        LocalDateTime.of(2024, 4, 1, 0, 0),
-        LocalDateTime.of(2024, 5, 1, 0, 0),
-        LocalDateTime.of(2024, 6, 1, 0, 0)
-    )
-    val montos = listOf(100, -50, 200, 150, -30, 300) // Totales
+    val transacciones by accountsPreferences.getAccountTransactionsFlow(cuenta).collectAsState(initial = null)
 
     Scaffold (
         modifier = Modifier.fillMaxSize(),
@@ -134,26 +131,59 @@ fun PantallaAnalisis(cuenta: String, onBack: () -> Unit) {
                 .fillMaxSize()
                 .background(ColorFondo)
                 .padding(innerPadding),
-            //verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(text = "Análisis y Predicción", fontWeight = FontWeight.Medium, fontSize = 20.sp, color = ColorBoton)
             Spacer(modifier = Modifier.height(20.dp))
-            GraficoLineas(fechas, montos)
-            Spacer(modifier = Modifier.height(20.dp))
-            DetalleButton()
-            Spacer(modifier = Modifier.height(20.dp))
-            Text(text = "Período", color = ColorExtra1)
-            Spacer(modifier = Modifier.height(10.dp))
-            MesesButton(months)
-            Spacer(modifier = Modifier.height(10.dp))
-            MesesButton(months)
+            when {
+                transacciones == null -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Cargando...",
+                            color = Color.White
+                        )
+                    }
+                }
+                transacciones!!.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No hay transacciones para mostrar",
+                            color = Color.White
+                        )
+                    }
+                }
+                else -> {
+                    val fechas = transacciones!!.map { it.fecha }
+                    val totales = transacciones!!.map { it.total }
+
+                    GraficoLineas(fechas, totales)
+                    Spacer(modifier = Modifier.height(20.dp))
+                    DetalleButton()
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Text(text = "Período", color = ColorExtra1)
+                    Spacer(modifier = Modifier.height(10.dp))
+                    MesesButton(fechas)
+                    Spacer(modifier = Modifier.height(10.dp))
+                    MesesButton(fechas)
+                }
+            }
         }
     }
 }
 
 @Composable
-fun MesesButton(months: List<String>) {
+fun MesesButton(fechas: List<LocalDate>) {
+    val fechasStr = fechas.map { it.toString() }
     val isDropDownExpanded = remember {
         mutableStateOf(false)
     }
@@ -169,7 +199,7 @@ fun MesesButton(months: List<String>) {
                 .background(color = Color.White)
                 .padding(5.dp)
         ) {
-            Text(text = months[itemPosition.value], color = ColorExtra2)
+            Text(text = fechasStr[itemPosition.value], color = ColorExtra2)
             Icon(
                 imageVector = Icons.Filled.ArrowDropDown,
                 contentDescription = "Expandir",
@@ -182,7 +212,7 @@ fun MesesButton(months: List<String>) {
                 isDropDownExpanded.value = false
             }
         ) {
-            months.forEachIndexed { index, month ->
+            fechasStr.forEachIndexed { index, month ->
                 DropdownMenuItem(
                     text = { Text(month, color = ColorExtra2) },
                     onClick = {
@@ -197,7 +227,7 @@ fun MesesButton(months: List<String>) {
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun GraficoLineas(fechas: List<LocalDateTime>, montos: List<Int>) {
+fun GraficoLineas(fechas: List<LocalDate>, montos: List<Int>) {
     AndroidView(
         factory = { context ->
             val linechart = LineChart(context)

@@ -40,29 +40,9 @@ class AccountsPreferences(private val context: Context) {
         accounts.map { it.nombre }
     }
 
-    // Obtener cuenta específica por nombre
-    fun getAccountFlow(accountName: String): Flow<Account?> = accountsFlow.map { accounts ->
-        accounts.find { it.nombre == accountName }
-    }
-
     // Obtener contraseña de cuenta específica
     fun getAccountPasswordFlow(accountName: String): Flow<String?> = accountsFlow.map { accounts ->
         accounts.find { it.nombre == accountName }?.contraseña
-    }
-
-    // Obtener montos de una cuenta específica
-    fun getAccountAmountsFlow(accountName: String): Flow<List<Int>> = accountsFlow.map { accounts ->
-        accounts.find { it.nombre == accountName }?.transacciones?.map { it.monto } ?: emptyList()
-    }
-
-    // Obtener mensajes de una cuenta específica
-    fun getAccountMessagesFlow(accountName: String): Flow<List<String>> = accountsFlow.map { accounts ->
-        accounts.find { it.nombre == accountName }?.transacciones?.map { it.mensaje } ?: emptyList()
-    }
-
-    // Obtener fechas de una cuenta específica
-    fun getAccountDatesFlow(accountName: String): Flow<List<String>> = accountsFlow.map { accounts ->
-        accounts.find { it.nombre == accountName }?.transacciones?.map { it.fecha } ?: emptyList()
     }
 
     // Obtener todas las transacciones de una cuenta
