@@ -44,7 +44,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -89,8 +88,6 @@ fun PantallaAnalisis(cuenta: String, onBack: () -> Unit) {
     val context = LocalContext.current
     // Instancia de DataStore
     val accountsPreferences = AccountsPreferences(context)
-    val scope = rememberCoroutineScope()
-
     val transacciones by accountsPreferences.getAccountTransactionsFlow(cuenta).collectAsState(initial = null)
 
     Scaffold (
@@ -164,17 +161,33 @@ fun PantallaAnalisis(cuenta: String, onBack: () -> Unit) {
                 }
                 else -> {
                     val fechas = transacciones!!.map { it.fecha }
-                    val totales = transacciones!!.map { it.total }
 
-                    GraficoLineas(fechas, totales)
+                    var fechaInicioIndex by remember { mutableIntStateOf(0) }
+                    var fechaFinIndex by remember { mutableIntStateOf(fechas.size - 1) }
+                    var (fechasFiltradas, totalesFiltrados) = remember(fechaInicioIndex, fechaFinIndex, transacciones) {
+                        if (transacciones!!.isEmpty()) {
+                            Pair(emptyList(), emptyList())
+                        } else {
+                            val inicio = fechaInicioIndex.coerceAtMost(fechaFinIndex)
+                            val fin = (fechaFinIndex + 1).coerceAtMost(transacciones!!.size)
+                            val filtered = transacciones!!.subList(inicio, fin)
+                            Pair(
+                                filtered.map { it.fecha },
+                                filtered.map { it.total }
+                            )
+                        }
+                    }
+
+                    Text(text = "Período", color = ColorExtra1)
+                    Spacer(modifier = Modifier.height(10.dp))
+                    MesesButton(fechas=fechas, selectedIndex = fechaInicioIndex, onDateSelected = { index, _ -> fechaInicioIndex = index }, label = "Inicio")
+                    Spacer(modifier = Modifier.height(10.dp))
+                    MesesButton(fechas=fechas, selectedIndex = fechaFinIndex, onDateSelected = { index, _ -> fechaFinIndex = index }, label = "Fin")
                     Spacer(modifier = Modifier.height(20.dp))
                     DetalleButton()
                     Spacer(modifier = Modifier.height(20.dp))
-                    Text(text = "Período", color = ColorExtra1)
-                    Spacer(modifier = Modifier.height(10.dp))
-                    MesesButton(fechas)
-                    Spacer(modifier = Modifier.height(10.dp))
-                    MesesButton(fechas)
+                    GraficoLineas(fechasFiltradas, totalesFiltrados)
+                    //GraficoLineas(fechas, totales)
                 }
             }
         }
@@ -182,24 +195,26 @@ fun PantallaAnalisis(cuenta: String, onBack: () -> Unit) {
 }
 
 @Composable
-fun MesesButton(fechas: List<LocalDate>) {
+fun MesesButton(
+    fechas: List<LocalDate>,
+    selectedIndex: Int = 0,
+    onDateSelected: (Int, LocalDate) -> Unit,
+    label: String = "Mes"
+) {
     val fechasStr = fechas.map { it.toString() }
-    val isDropDownExpanded = remember {
-        mutableStateOf(false)
-    }
-
-    val itemPosition = remember {
-        mutableIntStateOf(0)
-    }
+    val isDropDownExpanded = remember { mutableStateOf(false) }
 
     Box {
-        Row (
+        Row(
             modifier = Modifier
                 .clickable { isDropDownExpanded.value = true }
                 .background(color = Color.White)
                 .padding(5.dp)
         ) {
-            Text(text = fechasStr[itemPosition.value], color = ColorExtra2)
+            Text(
+                text = if (fechasStr.isNotEmpty()) fechasStr[selectedIndex] else label,
+                color = ColorExtra2
+            )
             Icon(
                 imageVector = Icons.Filled.ArrowDropDown,
                 contentDescription = "Expandir",
@@ -212,12 +227,12 @@ fun MesesButton(fechas: List<LocalDate>) {
                 isDropDownExpanded.value = false
             }
         ) {
-            fechasStr.forEachIndexed { index, month ->
+            fechasStr.forEachIndexed { index, dateStr ->
                 DropdownMenuItem(
-                    text = { Text(month, color = ColorExtra2) },
+                    text = { Text(dateStr, color = ColorExtra2) },
                     onClick = {
                         isDropDownExpanded.value = false
-                        itemPosition.value = index
+                        onDateSelected(index, fechas[index])
                     }
                 )
             }
@@ -231,23 +246,12 @@ fun GraficoLineas(fechas: List<LocalDate>, montos: List<Int>) {
     AndroidView(
         factory = { context ->
             val linechart = LineChart(context)
-            val entries = mutableListOf<Entry>()
-
-            montos.forEachIndexed { index, amount ->
-                entries.add(Entry(index.toFloat(), amount.toFloat()))
-            }
-
-            val formatter = DateTimeFormatter.ofPattern("MM/yyyy")
-            val fechasString = fechas.map { fecha ->
-                fecha.format(formatter)
-            }
 
             linechart.xAxis.apply {
                 setDrawGridLines(false)
                 position = XAxis.XAxisPosition.BOTTOM
                 granularity = 1f
                 axisLineColor = Color.White.toArgb()
-                valueFormatter = IndexAxisValueFormatter(fechasString)
                 axisLineWidth = 2f
             }
 
@@ -263,6 +267,22 @@ fun GraficoLineas(fechas: List<LocalDate>, montos: List<Int>) {
                 zeroLineWidth = 1f
             }
 
+            linechart.apply { description.isEnabled = false }
+        },
+        update = { lineChart ->
+            val entries = mutableListOf<Entry>()
+
+            montos.forEachIndexed { index, amount ->
+                entries.add(Entry(index.toFloat(), amount.toFloat()))
+            }
+
+            val formatter = DateTimeFormatter.ofPattern("MM/yyyy")
+            val fechasString = fechas.map { fecha ->
+                fecha.format(formatter)
+            }
+
+            lineChart.xAxis.valueFormatter = IndexAxisValueFormatter(fechasString)
+
             val dataset = LineDataSet(entries, "Totales").apply {
                 color = ColorBoton.toArgb()
                 setCircleColor(ColorBoton.toArgb())
@@ -274,10 +294,9 @@ fun GraficoLineas(fechas: List<LocalDate>, montos: List<Int>) {
                 mode = LineDataSet.Mode.LINEAR
             }
 
-            linechart.apply { description.isEnabled = false }
-            linechart.data = LineData(dataset)
+            lineChart.data = LineData(dataset)
 
-            linechart
+            lineChart.invalidate()
         },
         modifier = Modifier.fillMaxWidth().height(300.dp)
     )
