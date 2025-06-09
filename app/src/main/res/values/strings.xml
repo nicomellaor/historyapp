@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">app</string>
+    <string name="title_activity_log_in">LogIn</string>
+    <string name="title_activity_home_page">HomePage</string>
+    <string name="title_activity_analysis">Analysis</string>
+    <string name="title_activity_history">History</string>
+</resources>
