@@ -1,5 +1,6 @@
 package com.example.app
 
+import TransactionRecord
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -28,17 +29,21 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -48,6 +53,9 @@ import com.example.app.ui.theme.AppTheme
 import com.example.app.ui.theme.ColorFondo
 import com.example.app.ui.theme.ColorBloque
 import com.example.app.ui.theme.ColorBoton
+import kotlinx.coroutines.launch
+import toMap
+import java.time.LocalDate
 
 class History : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,7 +64,7 @@ class History : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AppTheme {
-                Historial (cuenta) {
+                Historial (cuenta = cuenta) {
                     finish()
                 }
             }
@@ -68,6 +76,13 @@ class History : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Historial(cuenta: String, onBack: () -> Unit) {
+    val context = LocalContext.current
+    // Instancia de DataStore
+    val accountsPreferences = AccountsPreferences(context)
+
+    val transacciones by accountsPreferences.getAccountTransactionsFlow(cuenta).collectAsState(initial = emptyList())
+    val transaccionesMap: List<Map<String, Any>> = transacciones.map { it.toMap() }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         // Logo de la App
@@ -114,86 +129,26 @@ fun Historial(cuenta: String, onBack: () -> Unit) {
             Text(text = cuenta, fontWeight = FontWeight.Medium, fontSize = 20.sp, color = ColorBoton)
             Spacer(modifier = Modifier.height(20.dp))
             Text(text = "Últimos movimientos", color = Color.White)
-            infoCuentaGrande(ejemplos)
+            InfoCuentaGrande(transaccionesMap, accountsPreferences, cuenta)
             Spacer(modifier = Modifier.height(20.dp))
-            Row(){
-                Column(){
+            Row {
+                Column {
                     Text(text = "Total: ", color = Color.White)
                 }
-                Column(){
-                    Text(text = TotalCuenta(ejemplos).toString(), color = Color.White)
+                Column {
+                    Text(text = totalCuenta(transaccionesMap).toString(), color = Color.White)
                 }
             }
         }
     }
 }
 
-
-val ejemplos: List<Map<String, Any>> = listOf(
-    mapOf(
-        "nombre" to "Compra Supermercado",
-        "fecha" to "2025-06-01",
-        "monto" to -450
-    ),
-    mapOf(
-        "nombre" to "Salario",
-        "fecha" to "2025-06-01",
-        "monto" to 1200
-    ),
-    mapOf(
-        "nombre" to "Pago Luz",
-        "fecha" to "2025-06-02",
-        "monto" to -600
-    ),
-    mapOf(
-        "nombre" to "Verduras",
-        "fecha" to "2025-06-03",
-        "monto" to -20000
-    ),
-    mapOf(
-        "nombre" to "Depósito",
-        "fecha" to "2025-06-04",
-        "monto" to 15000
-    ),
-    mapOf(
-        "nombre" to "Netflix",
-        "fecha" to "2025-06-04",
-        "monto" to -7000
-    ),
-    mapOf(
-        "nombre" to "Jamón y pan",
-        "fecha" to "2025-06-06",
-        "monto" to -3600
-    ),
-    mapOf(
-        "nombre" to "Deuda",
-        "fecha" to "2025-06-07",
-        "monto" to 40000
-    ),
-    mapOf(
-        "nombre" to "Supermercado",
-        "fecha" to "2025-06-10",
-        "monto" to -30000
-    ),
-    mapOf(
-        "nombre" to "Chocolate",
-        "fecha" to "2025-06-10",
-        "monto" to -600
-    ),
-    mapOf(
-        "nombre" to "Once",
-        "fecha" to "2025-06-12",
-        "monto" to -2500
-    )
-)
-
-
 @Composable
-fun infoCuentaGrande(ejemplos: List<Map<String, Any>>){
+fun InfoCuentaGrande(transaccionesMap: List<Map<String, Any>>, accountsPreferences: AccountsPreferences, cuenta: String){
     var mostrarDialogo by remember { mutableStateOf(false) }
     var itemSeleccionado by remember { mutableStateOf<Map<String, Any>?>(null) }
-
-
+    var enEdicion by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     Column(
         modifier = Modifier
             .background(
@@ -208,28 +163,30 @@ fun infoCuentaGrande(ejemplos: List<Map<String, Any>>){
             .clip(RoundedCornerShape(10.dp)) // Recorta el contenido interno
             .padding(horizontal = 4.dp)
     ){
-        var ultimoDia = ejemplos[0]["fecha"]
-        for (movimiento in ejemplos) {
-            if (ultimoDia != movimiento["fecha"]){
-                HorizontalDivider(color = Color.White)
-            }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        itemSeleccionado = movimiento
-                        mostrarDialogo = true
-                    }
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
+        if(transaccionesMap.isNotEmpty()){
+            var ultimoDia = transaccionesMap[0]["fecha"]
+            for (movimiento in transaccionesMap) {
+                if (ultimoDia != movimiento["fecha"]){
+                    HorizontalDivider(color = Color.White)
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            itemSeleccionado = movimiento
+                            mostrarDialogo = true
+                        }
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
 
-
-            ) {
-                Text(text = movimiento["fecha"].toString().substring(5), color = Color.White)
-                Text(text = movimiento["nombre"].toString(), color = Color.White)
-                Text(text = movimiento["monto"].toString(), color = Color.White)
-            }
-            ultimoDia = movimiento["fecha"]
+                ) {
+                    Text(text = movimiento["fecha"].toString().substring(5), color = Color.White)
+                    Text(text = movimiento["mensaje"].toString(), color = Color.White)
+                    Text(text = movimiento["monto"].toString(), color = Color.White)
+                }
+                ultimoDia = movimiento["fecha"]
+            }} else {
+            Text(text = "No hay transacciones", color = Color.White)
         }
         if (mostrarDialogo && itemSeleccionado != null) {
             AlertDialog(
@@ -237,14 +194,85 @@ fun infoCuentaGrande(ejemplos: List<Map<String, Any>>){
                 title = { Text(text = "Detalle del Movimiento") },
                 text = {
                     Text(
-                        "Nombre: ${itemSeleccionado!!["nombre"]}\n" +
+                        "Nombre: ${itemSeleccionado!!["mensaje"]}\n" +
                                 "Fecha: ${itemSeleccionado!!["fecha"]}\n" +
                                 "Monto: ${itemSeleccionado!!["monto"]}"
                     )
                 },
                 confirmButton = {
-                    Button(onClick = { mostrarDialogo = false }) {
-                        Text("Cerrar")
+                    Row {
+                        Button(onClick = {
+                            mostrarDialogo = false
+                            enEdicion = true
+                        }) {
+                            Text("Editar")
+                        }
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Button(onClick = {
+                            mostrarDialogo = false
+                            itemSeleccionado?.get("id")?.let { id ->
+                                if (id is Int) {
+                                    scope.launch {
+                                        accountsPreferences.deleteTransaction(cuenta,id)
+                                    }
+                                }
+                            }
+                        }) {
+                            Text("Eliminar")
+                        }
+                    }
+                }
+            )
+        }
+        if (enEdicion && itemSeleccionado != null) {
+            var nuevoNombre by remember { mutableStateOf(itemSeleccionado!!["mensaje"].toString()) }
+            var nuevoMonto by remember { mutableStateOf(itemSeleccionado!!["monto"].toString()) }
+            var nuevaFecha by remember { mutableStateOf(itemSeleccionado!!["fecha"].toString()) }
+
+
+            AlertDialog(
+                onDismissRequest = { enEdicion = false },
+                title = { Text("Editar Movimiento") },
+                text = {
+                    Column {
+                        TextField(
+                            value = nuevoNombre,
+                            onValueChange = { nuevoNombre = it },
+                            label = { Text("Mensaje") }
+                        )
+                        TextField(
+                            value = nuevoMonto,
+                            onValueChange = { nuevoMonto = it },
+                            label = { Text("Monto") }
+                        )
+                        TextField(
+                            value = nuevaFecha,
+                            onValueChange = { nuevaFecha = it },
+                            label = { Text("Fecha") }
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        scope.launch {
+                            val updatedTransaction = TransactionRecord(
+                                id = itemSeleccionado!!["id"].toString().toInt(),
+                                monto = nuevoMonto.toInt(),
+                                mensaje = nuevoNombre,
+                                fecha = LocalDate.parse(nuevaFecha),
+                                total = 0
+                            )
+                            accountsPreferences.updateTransaction(cuenta, updatedTransaction)
+                            enEdicion = false
+                            itemSeleccionado = null
+                        }
+                    }) {
+                        Text("Guardar")
+                    }
+                },
+                dismissButton = {
+                    Button(onClick = { enEdicion = false }) {
+                        Text("Cancelar")
                     }
                 }
             )
@@ -253,18 +281,12 @@ fun infoCuentaGrande(ejemplos: List<Map<String, Any>>){
 }
 
 @Composable
-fun TotalCuenta(cuenta: List<Map<String, Any>>): Int {
+fun totalCuenta(cuenta: List<Map<String, Any>>): Int {
     var total = 0
     for (item in cuenta){
         total += item["monto"].toString().toInt()
     }
     return total
-}
-
-@Composable
-fun EditarButton(){
-
-
 }
 
 @Preview(showBackground = true)

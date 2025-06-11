@@ -23,6 +23,7 @@ data class TransactionRecord @RequiresApi(Build.VERSION_CODES.O) constructor(
 
 // Obtener las transacciones como map
 fun TransactionRecord.toMap(): Map<String, Any> = mapOf(
+    "id" to id,
     "monto" to monto,
     "mensaje" to mensaje,
     "fecha" to fecha,

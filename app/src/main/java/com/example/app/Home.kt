@@ -1,15 +1,12 @@
 package com.example.app
 
 import TransactionRecord
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -85,7 +82,6 @@ class Home : ComponentActivity() {
     }
 }
 
-@SuppressLint("NewApi")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomePage(cuenta: String, onBack: () -> Unit) {
@@ -209,12 +205,11 @@ fun InfoCuenta(ejemplos: List<Map<String, Any>>){
             Text("Total: ", fontWeight = FontWeight.Medium, color = Color.White)
         }
         Column {
-            Text(text = TotalCuenta(ejemplos).toString(), color = Color.White)
+            Text(text = totalCuenta(ejemplos).toString(), color = Color.White)
         }
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun AgregarMovButton(cuentas: List<Map<String, Any>>, cuenta: String, scope: CoroutineScope, accountsPreferences: AccountsPreferences) {
     var showDialog by remember { mutableStateOf(false) }
@@ -224,7 +219,7 @@ fun AgregarMovButton(cuentas: List<Map<String, Any>>, cuenta: String, scope: Cor
     var fecha by remember { mutableStateOf(LocalDate.now()) }
     val formatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
     var fechaText by remember { mutableStateOf(LocalDate.now().format(formatter)) }
-    val total = TotalCuenta(cuentas)
+    val total = totalCuenta(cuentas)
 
     Button(
         onClick = { showDialog = true  },

@@ -66,7 +66,6 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 class Analysis : ComponentActivity() {
-    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val cuenta = intent.getStringExtra("cuenta") ?: "Desconocido"
@@ -81,7 +80,6 @@ class Analysis : ComponentActivity() {
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PantallaAnalisis(cuenta: String, onBack: () -> Unit) {
@@ -164,7 +162,7 @@ fun PantallaAnalisis(cuenta: String, onBack: () -> Unit) {
 
                     var fechaInicioIndex by remember { mutableIntStateOf(0) }
                     var fechaFinIndex by remember { mutableIntStateOf(fechas.size - 1) }
-                    var (fechasFiltradas, totalesFiltrados) = remember(fechaInicioIndex, fechaFinIndex, transacciones) {
+                    val (fechasFiltradas, totalesFiltrados) = remember(fechaInicioIndex, fechaFinIndex, transacciones) {
                         if (transacciones!!.isEmpty()) {
                             Pair(emptyList(), emptyList())
                         } else {
@@ -240,7 +238,6 @@ fun MesesButton(
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun GraficoLineas(fechas: List<LocalDate>, montos: List<Int>) {
     AndroidView(
@@ -336,7 +333,6 @@ fun prediccion() {
 
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Preview(showBackground = true)
 @Composable
 fun GreetingPreview4() {
