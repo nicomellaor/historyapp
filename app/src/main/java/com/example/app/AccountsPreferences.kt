@@ -102,7 +102,21 @@ class AccountsPreferences(private val context: Context) {
             val currentData = getCurrentAccountsData(preferences)
             val updatedAccounts = currentData.accounts.map { account ->
                 if (account.nombre == accountName) {
-                    account.copy(transacciones = account.transacciones + transaction)
+                    // Agregar la nueva transacción
+                    val allTransactions = account.transacciones + transaction
+
+                    // Recalcular TODOS los totales acumulados
+                    val transactionsWithRecalculatedTotals = mutableListOf<TransactionRecord>()
+                    var runningTotal = 0
+
+                    allTransactions.forEach { transaction ->
+                        runningTotal += transaction.monto
+                        transactionsWithRecalculatedTotals.add(
+                            transaction.copy(total = runningTotal)
+                        )
+                    }
+
+                    account.copy(transacciones = transactionsWithRecalculatedTotals)
                 } else {
                     account
                 }
@@ -125,7 +139,17 @@ class AccountsPreferences(private val context: Context) {
                             transaction
                         }
                     }
-                    account.copy(transacciones = updatedTransactions)
+                    // Recalcular Totales
+                    val transactionsWithUpdatedTotals = mutableListOf<TransactionRecord>()
+                    var runningTotal = 0
+
+                    updatedTransactions.forEach { transaction ->
+                        runningTotal += transaction.monto
+                        transactionsWithUpdatedTotals.add(
+                            transaction.copy(total = runningTotal)
+                        )
+                    }
+                    account.copy(transacciones = transactionsWithUpdatedTotals)
                 } else {
                     account
                 }

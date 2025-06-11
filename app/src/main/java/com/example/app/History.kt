@@ -260,7 +260,7 @@ fun InfoCuentaGrande(transaccionesMap: List<Map<String, Any>>, accountsPreferenc
                                 monto = nuevoMonto.toInt(),
                                 mensaje = nuevoNombre,
                                 fecha = LocalDate.parse(nuevaFecha),
-                                total = 0
+                                total = itemSeleccionado!!["total"].toString().toInt()
                             )
                             accountsPreferences.updateTransaction(cuenta, updatedTransaction)
                             enEdicion = false

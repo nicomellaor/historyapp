@@ -1,5 +1,3 @@
-import android.os.Build
-import androidx.annotation.RequiresApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -12,7 +10,7 @@ import java.time.format.DateTimeFormatter
 
 
 @Serializable
-data class TransactionRecord @RequiresApi(Build.VERSION_CODES.O) constructor(
+data class TransactionRecord(
     val id: Int,
     val monto: Int,
     val mensaje: String,
@@ -42,7 +40,6 @@ data class AccountsData(
     val accounts: List<Account> = emptyList()
 )
 
-@RequiresApi(Build.VERSION_CODES.O)
 object LocalDateSerializer : KSerializer<LocalDate> {
     override val descriptor: SerialDescriptor =
         PrimitiveSerialDescriptor("LocalDate", PrimitiveKind.STRING)
