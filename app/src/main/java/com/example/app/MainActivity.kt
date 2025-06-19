@@ -8,13 +8,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -35,6 +33,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -46,6 +45,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -80,12 +80,11 @@ fun PantallaInicio (){
     val accountsPreferences = AccountsPreferences(context)
     val scope = rememberCoroutineScope()
 
-    // val nombres = listOf("Cuenta 1", "Cuenta 2", "Cuenta 3", "Cuenta 4", "Cuenta 5", "Cuenta 6")
     val nombres by accountsPreferences.accountNamesFlow.collectAsState(initial = emptyList())
 
     Scaffold(
-        modifier = Modifier.fillMaxSize().background(ColorFondo),
-        contentWindowInsets = WindowInsets(0, 0, 0, 0), // Por espacio en blanco debajo
+        modifier = Modifier.fillMaxSize(),
+        containerColor = ColorFondo,
         floatingActionButton = {
             AgregarButton(accountsPreferences, scope)
         },
@@ -112,8 +111,6 @@ fun PantallaInicio (){
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
-                .background(ColorFondo),
-
             ){
             Column (
                 modifier = Modifier
@@ -129,7 +126,7 @@ fun PantallaInicio (){
                         onClick = { navigateToLogin(context, cuenta) },
                         colors = ButtonDefaults.buttonColors(containerColor = ColorBoton)
                     ) {
-                        Text(cuenta)
+                        Text(cuenta, color = Color.White)
                     }
                 }
             }
@@ -169,7 +166,11 @@ fun AgregarButton(accountsPreferences: AccountsPreferences, scope: CoroutineScop
                         value = nombre,
                         onValueChange = { nombre = it },
                         label = { Text("Nombre de cuenta") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = TextFieldDefaults.colors(
+                            focusedIndicatorColor = ColorBoton,
+                            focusedLabelColor = ColorBoton
+                        ),
                     )
                     Spacer(Modifier.height(8.dp))
                     TextField(
@@ -178,7 +179,11 @@ fun AgregarButton(accountsPreferences: AccountsPreferences, scope: CoroutineScop
                         label = { Text("Contraseña/PIN") },
                         modifier = Modifier.fillMaxWidth(),
                         visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        colors = TextFieldDefaults.colors(
+                            focusedIndicatorColor = ColorBoton,
+                            focusedLabelColor = ColorBoton
+                        ),
                     )
                 }
             },

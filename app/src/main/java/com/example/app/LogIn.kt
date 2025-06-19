@@ -8,7 +8,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -44,8 +43,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
@@ -87,6 +86,7 @@ fun PantallaLogin(cuenta: String, onBack: () -> Unit) {
 
     Scaffold (
         modifier = Modifier.fillMaxSize(),
+        containerColor = ColorFondo,
         // Logo de la App
         topBar = {
             TopAppBar(
@@ -121,7 +121,6 @@ fun PantallaLogin(cuenta: String, onBack: () -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(ColorFondo)
                 .padding(innerPadding),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
@@ -134,7 +133,12 @@ fun PantallaLogin(cuenta: String, onBack: () -> Unit) {
                 onValueChange = { password = it },
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                colors = OutlinedTextFieldDefaults.colors( unfocusedContainerColor = ColorFondo)
+                colors = TextFieldDefaults.colors(
+                    unfocusedContainerColor = ColorFondo,
+                    focusedContainerColor = ColorFondo,
+                    focusedIndicatorColor = ColorBoton,
+                    focusedLabelColor = ColorBoton
+                ),
             )
             Spacer(modifier = Modifier.height(60.dp))
             Button(
@@ -178,6 +182,10 @@ fun PasswordButton(cuenta: String, scope: CoroutineScope, accountsPreferences: A
                         modifier = Modifier.fillMaxWidth(),
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        colors = TextFieldDefaults.colors(
+                            focusedIndicatorColor = ColorBoton,
+                            focusedLabelColor = ColorBoton
+                        ),
                     )
                 }
             },

@@ -36,6 +36,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -95,6 +96,7 @@ fun HomePage(cuenta: String, onBack: () -> Unit) {
     val transaccionesMap: List<Map<String, Any>> = transacciones.map { it.toMap() }
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        containerColor = ColorFondo,
         floatingActionButton = {
             AgregarMovButton(transaccionesMap, cuenta, scope, accountsPreferences)
         },
@@ -135,7 +137,6 @@ fun HomePage(cuenta: String, onBack: () -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(ColorFondo)
                 .padding(innerPadding),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -241,18 +242,26 @@ fun AgregarMovButton(cuentas: List<Map<String, Any>>, cuenta: String, scope: Cor
             text = {
                 Column {
                     TextField(
+                        value = mensaje,
+                        onValueChange = { mensaje = it },
+                        label = { Text("Mensaje") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = TextFieldDefaults.colors(
+                            focusedIndicatorColor = ColorBoton,
+                            focusedLabelColor = ColorBoton
+                        ),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    TextField(
                         value = monto,
                         onValueChange = { monto = it },
                         label = { Text("Monto") },
                         modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    TextField(
-                        value = mensaje,
-                        onValueChange = { mensaje = it },
-                        label = { Text("Mensaje") },
-                        modifier = Modifier.fillMaxWidth()
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        colors = TextFieldDefaults.colors(
+                            focusedIndicatorColor = ColorBoton,
+                            focusedLabelColor = ColorBoton
+                        ),
                     )
                     Spacer(Modifier.height(8.dp))
                     TextField(
@@ -268,7 +277,11 @@ fun AgregarMovButton(cuentas: List<Map<String, Any>>, cuenta: String, scope: Cor
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Number
-                        )
+                        ),
+                        colors = TextFieldDefaults.colors(
+                            focusedIndicatorColor = ColorBoton,
+                            focusedLabelColor = ColorBoton
+                        ),
                     )
                 }
             },

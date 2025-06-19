@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -30,6 +31,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -85,6 +87,7 @@ fun Historial(cuenta: String, onBack: () -> Unit) {
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        containerColor = ColorFondo,
         // Logo de la App
         topBar = {
             TopAppBar(
@@ -122,7 +125,6 @@ fun Historial(cuenta: String, onBack: () -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(ColorFondo)
                 .padding(innerPadding),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -204,7 +206,7 @@ fun InfoCuentaGrande(transaccionesMap: List<Map<String, Any>>, accountsPreferenc
                         Button(onClick = {
                             mostrarDialogo = false
                             enEdicion = true
-                        }) {
+                        }, colors = ButtonDefaults.buttonColors(containerColor = ColorBoton)) {
                             Text("Editar")
                         }
                         Spacer(modifier = Modifier.size(8.dp))
@@ -217,7 +219,7 @@ fun InfoCuentaGrande(transaccionesMap: List<Map<String, Any>>, accountsPreferenc
                                     }
                                 }
                             }
-                        }) {
+                        }, colors = ButtonDefaults.buttonColors(containerColor = ColorBoton)) {
                             Text("Eliminar")
                         }
                     }
@@ -238,17 +240,29 @@ fun InfoCuentaGrande(transaccionesMap: List<Map<String, Any>>, accountsPreferenc
                         TextField(
                             value = nuevoNombre,
                             onValueChange = { nuevoNombre = it },
-                            label = { Text("Mensaje") }
+                            label = { Text("Mensaje") },
+                            colors = TextFieldDefaults.colors(
+                                focusedIndicatorColor = ColorBoton,
+                                focusedLabelColor = ColorBoton
+                            ),
                         )
                         TextField(
                             value = nuevoMonto,
                             onValueChange = { nuevoMonto = it },
-                            label = { Text("Monto") }
+                            label = { Text("Monto") },
+                            colors = TextFieldDefaults.colors(
+                                focusedIndicatorColor = ColorBoton,
+                                focusedLabelColor = ColorBoton
+                            ),
                         )
                         TextField(
                             value = nuevaFecha,
                             onValueChange = { nuevaFecha = it },
-                            label = { Text("Fecha") }
+                            label = { Text("Fecha") },
+                            colors = TextFieldDefaults.colors(
+                                focusedIndicatorColor = ColorBoton,
+                                focusedLabelColor = ColorBoton
+                            ),
                         )
                     }
                 },
@@ -266,12 +280,12 @@ fun InfoCuentaGrande(transaccionesMap: List<Map<String, Any>>, accountsPreferenc
                             enEdicion = false
                             itemSeleccionado = null
                         }
-                    }) {
+                    }, colors = ButtonDefaults.buttonColors(containerColor = ColorBoton)) {
                         Text("Guardar")
                     }
                 },
                 dismissButton = {
-                    Button(onClick = { enEdicion = false }) {
+                    Button(onClick = { enEdicion = false }, colors = ButtonDefaults.buttonColors(containerColor = ColorBoton)) {
                         Text("Cancelar")
                     }
                 }

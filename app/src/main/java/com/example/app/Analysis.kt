@@ -88,6 +88,7 @@ fun PantallaAnalisis(cuenta: String, onBack: () -> Unit) {
 
     Scaffold (
         modifier = Modifier.fillMaxSize(),
+        containerColor = ColorFondo,
         // Logo de la App
         topBar = {
             TopAppBar(
@@ -122,7 +123,6 @@ fun PantallaAnalisis(cuenta: String, onBack: () -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(ColorFondo)
                 .padding(innerPadding),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -311,7 +311,7 @@ fun DetalleButton() {
             title = { Text("Predicción de Montos") },
             text = {
                 Column {
-                    Text("Aproximación por curva")
+                    Text("Aproximación por curva estará disponible próximamente")
                 }
             },
             confirmButton = {
@@ -320,15 +320,11 @@ fun DetalleButton() {
                         showDialog = false
                     }
                 ) {
-                    Text("Cerrar")
+                    Text("Cerrar", color = ColorBoton)
                 }
             }
         )
     }
-}
-
-fun prediccion() {
-
 }
 
 @Preview(showBackground = true)
