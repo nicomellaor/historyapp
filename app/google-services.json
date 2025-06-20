@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "274502997294",
+    "project_id": "historyapp-eb73d",
+    "storage_bucket": "historyapp-eb73d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:274502997294:android:76bdc8c35b753e26e256bf",
+        "android_client_info": {
+          "package_name": "com.example.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDFr6XKYi-CwRO4b8tCU2FiQlWYwc3HW7A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

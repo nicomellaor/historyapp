@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.googleServices)  //aplica el plugin de Google Services (com.google.gms.google-services) a tu módulo de aplicación.
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
@@ -63,4 +64,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.runtime.livedata)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(platform(libs.firebase.bom)) //El BOM asegura que todas las dependencias de Firebase usen versiones compatibles entre sí.
+    implementation(libs.firebase.auth) //que permite autenticar usuarios en tu app con Firebase
+    implementation(libs.androidx.navigation.compose) //Permite manejar rutas y pantallas (composable("login") { ... }) dentro de una app Compose.
 }
