@@ -4,4 +4,6 @@
     <string name="title_activity_home_page">HomePage</string>
     <string name="title_activity_analysis">Analysis</string>
     <string name="title_activity_history">History</string>
+    <string name="title_activity_acc_select">AccSelect</string>
+    <string name="title_activity_acc_create">AccCreate</string>
 </resources>

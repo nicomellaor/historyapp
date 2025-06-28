@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -48,25 +49,35 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.app.ui.theme.AppTheme
 import com.example.app.ui.theme.ColorBoton
 import com.example.app.ui.theme.ColorFondo
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    private lateinit var auth: FirebaseAuth
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        auth = FirebaseAuth.getInstance()
+        // Verificar si el usuario ya está autenticado
+        if (auth.currentUser == null) {
+            // No hay usuario logueado, ir a AccSelect
+            val intent = Intent(this, AccSelect::class.java)
+            startActivity(intent)
+            finish() // Importante: cerrar MainActivity
+            return
+        }
         enableEdgeToEdge()
         setContent {
             AppTheme {
-                PantallaInicio()
+                PantallaInicio(auth)
             }
         }
     }
@@ -74,7 +85,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PantallaInicio (){
+fun PantallaInicio (auth: FirebaseAuth){
     val context = LocalContext.current
     // Instancia de DataStore
     val accountsPreferences = AccountsPreferences(context)
@@ -86,7 +97,10 @@ fun PantallaInicio (){
         modifier = Modifier.fillMaxSize(),
         containerColor = ColorFondo,
         floatingActionButton = {
-            AgregarButton(accountsPreferences, scope)
+            Column (verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                AgregarButton(accountsPreferences, scope)
+                CerrarSesionButton(context, auth)
+            }
         },
         // Logo de la App
         topBar = {
@@ -131,6 +145,25 @@ fun PantallaInicio (){
                 }
             }
         }
+    }
+}
+
+@Composable
+fun CerrarSesionButton(context: Context, auth: FirebaseAuth){
+    Button(
+        onClick = {
+            auth.signOut()
+            navigateToAccSelect(context)
+        },
+        modifier = Modifier.size(48.dp),
+        shape = CircleShape,
+        contentPadding = PaddingValues(0.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = ColorBoton)
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+            contentDescription = "Cerrar sesión"
+        )
     }
 }
 
@@ -230,12 +263,4 @@ fun navigateToLogin(context: Context, cuenta: String){
         putExtra("cuenta", cuenta)
     }
     context.startActivity(intent)
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    AppTheme {
-        PantallaInicio()
-    }
 }
