@@ -1,23 +1,14 @@
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
 
-
-@Serializable
+@Parcelize
 data class TransactionRecord(
-    val id: Int,
-    val monto: Int,
-    val mensaje: String,
-    @Serializable(with = LocalDateSerializer::class)
-    val fecha: LocalDate,
-    val total: Int
-)
+    val id: Int = 0,
+    val monto: Int = 0,
+    val mensaje: String = "",
+    val fecha: String = "",
+    val total: Int = 0
+) : Parcelable
 
 // Obtener las transacciones como map
 fun TransactionRecord.toMap(): Map<String, Any> = mapOf(
@@ -28,32 +19,16 @@ fun TransactionRecord.toMap(): Map<String, Any> = mapOf(
     "total" to total
 )
 
-@Serializable
+@Parcelize
 data class Account(
-    val nombre: String,
-    val contraseña: String,
-    val transacciones: List<TransactionRecord> = emptyList()
-)
+    val id: String = "",
+    val userId: String = "",
+    val nombre: String = "",
+    val contraseña: String = "",
+    var transacciones: List<TransactionRecord> = emptyList()
+) : Parcelable
 
-@Serializable
+@Parcelize
 data class AccountsData(
     val accounts: List<Account> = emptyList()
-)
-
-object LocalDateSerializer : KSerializer<LocalDate> {
-    override val descriptor: SerialDescriptor =
-        PrimitiveSerialDescriptor("LocalDate", PrimitiveKind.STRING)
-
-    private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-
-    override fun serialize(encoder: Encoder, value: LocalDate) {
-        encoder.encodeString(value.format(formatter))
-    }
-
-    override fun deserialize(decoder: Decoder): LocalDate {
-        return LocalDate.parse(decoder.decodeString(), formatter)
-    }
-}
-
-
-
+) : Parcelable

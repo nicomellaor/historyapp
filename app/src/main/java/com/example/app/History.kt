@@ -1,7 +1,9 @@
 package com.example.app
 
+import Account
 import TransactionRecord
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -35,39 +37,39 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.app.ui.theme.AppTheme
-import com.example.app.ui.theme.ColorFondo
 import com.example.app.ui.theme.ColorBloque
 import com.example.app.ui.theme.ColorBoton
-import kotlinx.coroutines.launch
+import com.example.app.ui.theme.ColorFondo
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
 import toMap
 import java.time.LocalDate
 
 class History : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val cuenta = intent.getStringExtra("cuenta") ?: "Desconocido"
+        @Suppress("DEPRECATION")
+        val cuenta = intent.getParcelableExtra<Account>("cuenta")
         enableEdgeToEdge()
         setContent {
             AppTheme {
-                Historial (cuenta = cuenta) {
-                    finish()
+                if (cuenta != null) {
+                    Historial (cuenta = cuenta) {
+                        finish()
+                    }
                 }
             }
         }
@@ -77,12 +79,13 @@ class History : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Historial(cuenta: String, onBack: () -> Unit) {
-    val context = LocalContext.current
+fun Historial(cuenta: Account, onBack: () -> Unit) {
+    // val context = LocalContext.current
     // Instancia de DataStore
-    val accountsPreferences = AccountsPreferences(context)
+    // val accountsPreferences = AccountsPreferences(context)
 
-    val transacciones by accountsPreferences.getAccountTransactionsFlow(cuenta).collectAsState(initial = emptyList())
+    // val transacciones by accountsPreferences.getAccountTransactionsFlow(cuenta).collectAsState(initial = emptyList())
+    val transacciones = cuenta.transacciones
     val transaccionesMap: List<Map<String, Any>> = transacciones.map { it.toMap() }
 
     Scaffold(
@@ -128,10 +131,10 @@ fun Historial(cuenta: String, onBack: () -> Unit) {
                 .padding(innerPadding),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = cuenta, fontWeight = FontWeight.Medium, fontSize = 20.sp, color = ColorBoton)
+            Text(text = cuenta.nombre, fontWeight = FontWeight.Medium, fontSize = 20.sp, color = ColorBoton)
             Spacer(modifier = Modifier.height(20.dp))
             Text(text = "Últimos movimientos", color = Color.White)
-            InfoCuentaGrande(transaccionesMap, accountsPreferences, cuenta)
+            InfoCuentaGrande(transaccionesMap, cuenta)
             Spacer(modifier = Modifier.height(20.dp))
             Row {
                 Column {
@@ -146,11 +149,11 @@ fun Historial(cuenta: String, onBack: () -> Unit) {
 }
 
 @Composable
-fun InfoCuentaGrande(transaccionesMap: List<Map<String, Any>>, accountsPreferences: AccountsPreferences, cuenta: String){
+fun InfoCuentaGrande(transaccionesMap: List<Map<String, Any>>, cuenta: Account){
     var mostrarDialogo by remember { mutableStateOf(false) }
     var itemSeleccionado by remember { mutableStateOf<Map<String, Any>?>(null) }
     var enEdicion by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
+    // val scope = rememberCoroutineScope()
     Column(
         modifier = Modifier
             .background(
@@ -211,12 +214,19 @@ fun InfoCuentaGrande(transaccionesMap: List<Map<String, Any>>, accountsPreferenc
                         }
                         Spacer(modifier = Modifier.size(8.dp))
                         Button(onClick = {
-                            mostrarDialogo = false
                             itemSeleccionado?.get("id")?.let { id ->
                                 if (id is Int) {
-                                    scope.launch {
+                                    /*scope.launch {
                                         accountsPreferences.deleteTransaction(cuenta,id)
-                                    }
+                                    }*/
+                                    eliminarTransaccion(
+                                        cuenta,
+                                        id,
+                                        onSuccess = {
+                                            mostrarDialogo = false
+                                        },
+                                        onError = { Log.e("Firestore", "Error al borrar transaccion", it) }
+                                    )
                                 }
                             }
                         }, colors = ButtonDefaults.buttonColors(containerColor = ColorBoton)) {
@@ -268,7 +278,7 @@ fun InfoCuentaGrande(transaccionesMap: List<Map<String, Any>>, accountsPreferenc
                 },
                 confirmButton = {
                     Button(onClick = {
-                        scope.launch {
+                        /*scope.launch {
                             val updatedTransaction = TransactionRecord(
                                 id = itemSeleccionado!!["id"].toString().toInt(),
                                 monto = nuevoMonto.toInt(),
@@ -279,7 +289,23 @@ fun InfoCuentaGrande(transaccionesMap: List<Map<String, Any>>, accountsPreferenc
                             accountsPreferences.updateTransaction(cuenta, updatedTransaction)
                             enEdicion = false
                             itemSeleccionado = null
-                        }
+                        }*/
+                        val updatedTransaction = TransactionRecord(
+                            id = itemSeleccionado!!["id"].toString().toInt(),
+                            monto = nuevoMonto.toInt(),
+                            mensaje = nuevoNombre,
+                            fecha = LocalDate.parse(nuevaFecha).toString(),
+                            total = itemSeleccionado!!["total"].toString().toInt()
+                        )
+                        actualizarTransaccion(
+                            cuenta = cuenta,
+                            transaccionActualizada = updatedTransaction,
+                            onSuccess = {
+                                enEdicion = false
+                                itemSeleccionado = null
+                            },
+                            onError = { Log.e("Firestore", "Error al setear transaccion", it) }
+                        )
                     }, colors = ButtonDefaults.buttonColors(containerColor = ColorBoton)) {
                         Text("Guardar")
                     }
@@ -294,6 +320,54 @@ fun InfoCuentaGrande(transaccionesMap: List<Map<String, Any>>, accountsPreferenc
     }
 }
 
+fun actualizarTransaccion(cuenta: Account, transaccionActualizada: TransactionRecord, onSuccess: () -> Unit, onError: (Exception) -> Unit) {
+    val db = FirebaseFirestore.getInstance()
+    db.collection("cuentas")
+        .document(cuenta.id)
+        .get()
+        .addOnSuccessListener { document ->
+            val account = document.toObject(Account::class.java)
+            if (account != null) {
+                // Actualizar la transacción en la lista
+                val transaccionesActualizadas = account.transacciones.map {
+                    if (it.id == transaccionActualizada.id) transaccionActualizada else it
+                }
+
+                // Guardar la lista actualizada
+                db.collection("cuentas")
+                    .document(cuenta.id)
+                    .update("transacciones", transaccionesActualizadas.map { it.toMap() })
+                    .addOnSuccessListener { onSuccess() }
+                    .addOnFailureListener { onError(it) }
+            }
+        }
+        .addOnFailureListener { onError(it) }
+}
+
+fun eliminarTransaccion(cuenta: Account, transaccionId: Int, onSuccess: () -> Unit, onError: (Exception) -> Unit) {
+    val db = FirebaseFirestore.getInstance()
+    db.collection("cuentas")
+        .document(cuenta.id)
+        .get()
+        .addOnSuccessListener { document ->
+            val account = document.toObject(Account::class.java)
+            if (account != null) {
+                // Filtrar la transacción que queremos eliminar
+                val transaccionesFiltradas = account.transacciones.filter {
+                    it.id != transaccionId
+                }
+
+                // Actualizar con la lista filtrada
+                db.collection("cuentas")
+                    .document(cuenta.id)
+                    .update("transacciones", transaccionesFiltradas.map { it.toMap() })
+                    .addOnSuccessListener { onSuccess() }
+                    .addOnFailureListener { onError(it) }
+            }
+        }
+        .addOnFailureListener { onError(it) }
+}
+
 @Composable
 fun totalCuenta(cuenta: List<Map<String, Any>>): Int {
     var total = 0
@@ -301,12 +375,4 @@ fun totalCuenta(cuenta: List<Map<String, Any>>): Int {
         total += item["monto"].toString().toInt()
     }
     return total
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview5() {
-    AppTheme {
-        Historial("Cuenta 1", onBack = {})
-    }
 }

@@ -1,9 +1,11 @@
 package com.example.app
 
+import Account
 import TransactionRecord
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -40,11 +42,9 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,15 +54,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.app.ui.theme.AppTheme
 import com.example.app.ui.theme.ColorBloque
 import com.example.app.ui.theme.ColorBoton
 import com.example.app.ui.theme.ColorFondo
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
 import toMap
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -71,12 +70,15 @@ import kotlin.math.abs
 class Home : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val cuenta = intent.getStringExtra("cuenta") ?: "Desconocido"
+        @Suppress("DEPRECATION")
+        val cuenta = intent.getParcelableExtra<Account>("cuenta")
         enableEdgeToEdge()
         setContent {
             AppTheme {
-                HomePage(cuenta) {
-                    finish()
+                if (cuenta != null) {
+                    HomePage(cuenta) {
+                        finish()
+                    }
                 }
             }
         }
@@ -85,20 +87,21 @@ class Home : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomePage(cuenta: String, onBack: () -> Unit) {
+fun HomePage(cuenta: Account, onBack: () -> Unit) {
     val context = LocalContext.current
-    // Instancia de DataStore
+    /* Instancia de DataStore
     val accountsPreferences = AccountsPreferences(context)
-    val scope = rememberCoroutineScope()
+    val scope = rememberCoroutineScope()*/
 
-    // Obtener transacciones y pasar a Map (FALTA LIMITAR)
-    val transacciones by accountsPreferences.getAccountTransactionsFlow(cuenta).collectAsState(initial = emptyList())
+    // Obtener transacciones y pasar a Map
+    // val transacciones by accountsPreferences.getAccountTransactionsFlow(cuenta).collectAsState(initial = emptyList())
+    val transacciones = cuenta.transacciones
     val transaccionesMap: List<Map<String, Any>> = transacciones.map { it.toMap() }
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = ColorFondo,
         floatingActionButton = {
-            AgregarMovButton(transaccionesMap, cuenta, scope, accountsPreferences)
+            AgregarMovButton(transaccionesMap, cuenta)
         },
         // Logo de la App
         topBar = {
@@ -140,7 +143,7 @@ fun HomePage(cuenta: String, onBack: () -> Unit) {
                 .padding(innerPadding),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = cuenta, fontWeight = FontWeight.Medium, fontSize = 20.sp, color = ColorBoton)
+            Text(text = cuenta.nombre, fontWeight = FontWeight.Medium, fontSize = 20.sp, color = ColorBoton)
             Spacer(modifier = Modifier.height(20.dp))
             Text(text = "Últimos movimientos", color = Color.White)
             InfoCuenta(transaccionesMap)
@@ -161,7 +164,7 @@ fun HomePage(cuenta: String, onBack: () -> Unit) {
                 Text("Análisis y Predicción")
             }
             Spacer(modifier = Modifier.height(20.dp))
-            EliminarButton(cuenta, scope, accountsPreferences, context)
+            EliminarButton(cuenta, context)
         }
     }
 }
@@ -212,7 +215,7 @@ fun InfoCuenta(ejemplos: List<Map<String, Any>>){
 }
 
 @Composable
-fun AgregarMovButton(cuentas: List<Map<String, Any>>, cuenta: String, scope: CoroutineScope, accountsPreferences: AccountsPreferences) {
+fun AgregarMovButton(transacciones: List<Map<String, Any>>, cuenta: Account) {
     var showDialog by remember { mutableStateOf(false) }
     // Variables de estado
     var monto by remember { mutableStateOf("") }
@@ -220,7 +223,7 @@ fun AgregarMovButton(cuentas: List<Map<String, Any>>, cuenta: String, scope: Cor
     var fecha by remember { mutableStateOf(LocalDate.now()) }
     val formatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
     var fechaText by remember { mutableStateOf(LocalDate.now().format(formatter)) }
-    val total = totalCuenta(cuentas)
+    val total = totalCuenta(transacciones)
 
     Button(
         onClick = { showDialog = true  },
@@ -290,7 +293,7 @@ fun AgregarMovButton(cuentas: List<Map<String, Any>>, cuenta: String, scope: Cor
                     onClick = {
                         // Lógica para guardar
                         if (monto.isNotBlank() && mensaje.isNotBlank()){
-                            scope.launch {
+                            /*scope.launch {
                                 try {
                                     val id = accountsPreferences.generateId(cuenta)
                                     val transaction = TransactionRecord(id, monto.toInt(), mensaje, fecha, total)
@@ -302,7 +305,20 @@ fun AgregarMovButton(cuentas: List<Map<String, Any>>, cuenta: String, scope: Cor
                                 } catch (e: Exception) {
                                     println("Exception message: ${e.message}")
                                 }
-                            }
+                            }*/
+                            val id = generarIdTransaccion(transacciones)
+                            val transaction = TransactionRecord(id, monto.toInt(), mensaje, fecha.toString(), total)
+                            agregarTransaccion(
+                                cuenta = cuenta,
+                                transaccion = transaction,
+                                onSuccess = {
+                                    monto = ""
+                                    mensaje = ""
+                                    fecha = LocalDate.now()
+                                    showDialog = false
+                                },
+                                onError = { Log.e("Firestore", "Error al setear transaccion", it) }
+                            )
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = ColorBoton)
@@ -322,7 +338,7 @@ fun AgregarMovButton(cuentas: List<Map<String, Any>>, cuenta: String, scope: Cor
 }
 
 @Composable
-fun EliminarButton(cuenta: String, scope: CoroutineScope, accountsPreferences: AccountsPreferences, context: Context) {
+fun EliminarButton(cuenta: Account, context: Context) {
     var showDialog by remember { mutableStateOf(false) }
 
     Button(onClick = { showDialog = true }, colors = ButtonDefaults.buttonColors(containerColor = ColorBoton)) {
@@ -335,18 +351,27 @@ fun EliminarButton(cuenta: String, scope: CoroutineScope, accountsPreferences: A
             title = { Text("Eliminar Cuenta") },
             text = {
                 Column {
-                    Text("¿Está seguro/a de que desea eliminar $cuenta?")
+                    Text("¿Está seguro/a de que desea eliminar ${cuenta.nombre}?")
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
                         // Lógica para eliminar
-                        scope.launch {
+                        /*scope.launch {
                             accountsPreferences.deleteAccount(cuenta)
                             showDialog = false
                             navigatetoMain(context)
-                        }
+                        }*/
+                        eliminarCuenta(
+                            cuenta = cuenta,
+                            onSuccess = {
+                                showDialog = false
+                                navigatetoMain(context)
+                            },
+                            onError = { Log.e("Firestore", "Error al borrar cuenta", it) }
+
+                        )
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = ColorBoton)
                 ) {
@@ -364,6 +389,45 @@ fun EliminarButton(cuenta: String, scope: CoroutineScope, accountsPreferences: A
     }
 }
 
+fun agregarTransaccion(cuenta: Account, transaccion: TransactionRecord, onSuccess: () -> Unit, onError: (Exception) -> Unit) {
+    val db = FirebaseFirestore.getInstance()
+    db.collection("cuentas")
+        .document(cuenta.id)
+        .update("transacciones", FieldValue.arrayUnion(transaccion.toMap()))
+        .addOnSuccessListener {
+            onSuccess()
+        }
+        .addOnFailureListener { exception ->
+            onError(exception)
+        }
+}
+
+fun eliminarCuenta(cuenta: Account, onSuccess: () -> Unit, onError: (Exception) -> Unit) {
+    val db = FirebaseFirestore.getInstance()
+    db.collection("cuentas")
+        .document(cuenta.id)
+        .delete()
+        .addOnSuccessListener {
+            onSuccess()
+        }
+        .addOnFailureListener { exception ->
+            onError(exception)
+        }
+}
+
+fun generarIdTransaccion(transacciones: List<Map<String, Any>>): Int {
+    val ids: List<Int> = transacciones.map { it["id"] as Int }
+    var numero = 1
+    var nuevoId: Int
+
+    do {
+        nuevoId = numero
+        numero++
+    } while (nuevoId in ids)
+
+    return nuevoId
+}
+
 fun navigatetoMain(context: Context) {
     val intent = Intent(context, MainActivity::class.java).apply {
         flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -371,24 +435,16 @@ fun navigatetoMain(context: Context) {
     context.startActivity(intent)
 }
 
-fun navigateToAnalysis(context: Context, cuenta: String) {
+fun navigateToAnalysis(context: Context, cuenta: Account) {
     val intent = Intent(context, Analysis::class.java).apply {
         putExtra("cuenta", cuenta)
     }
     context.startActivity(intent)
 }
 
-fun navigateToHistory(context: Context, cuenta: String) {
+fun navigateToHistory(context: Context, cuenta: Account) {
     val intent = Intent(context, History::class.java).apply {
         putExtra("cuenta", cuenta)
     }
     context.startActivity(intent)
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview3() {
-    AppTheme {
-        HomePage("Cuenta 1", onBack = {})
-    }
 }

@@ -1,5 +1,6 @@
 package com.example.app
 
+import Account
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,36 +18,33 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.app.ui.theme.AppTheme
@@ -60,18 +58,20 @@ import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
-import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 class Analysis : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val cuenta = intent.getStringExtra("cuenta") ?: "Desconocido"
+        @Suppress("DEPRECATION")
+        val cuenta = intent.getParcelableExtra<Account>("cuenta")
         enableEdgeToEdge()
         setContent {
             AppTheme {
-                PantallaAnalisis (cuenta) {
-                    finish()
+                if (cuenta != null) {
+                    PantallaAnalisis (cuenta) {
+                        finish()
+                    }
                 }
             }
         }
@@ -80,11 +80,12 @@ class Analysis : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PantallaAnalisis(cuenta: String, onBack: () -> Unit) {
-    val context = LocalContext.current
+fun PantallaAnalisis(cuenta: Account, onBack: () -> Unit) {
+    // val context = LocalContext.current
     // Instancia de DataStore
-    val accountsPreferences = AccountsPreferences(context)
-    val transacciones by accountsPreferences.getAccountTransactionsFlow(cuenta).collectAsState(initial = null)
+    // val accountsPreferences = AccountsPreferences(context)
+    // val transacciones by accountsPreferences.getAccountTransactionsFlow(cuenta).collectAsState(initial = null)
+    val transacciones = cuenta.transacciones
 
     Scaffold (
         modifier = Modifier.fillMaxSize(),
@@ -129,20 +130,7 @@ fun PantallaAnalisis(cuenta: String, onBack: () -> Unit) {
             Text(text = "Análisis y Predicción", fontWeight = FontWeight.Medium, fontSize = 20.sp, color = ColorBoton)
             Spacer(modifier = Modifier.height(20.dp))
             when {
-                transacciones == null -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Cargando...",
-                            color = Color.White
-                        )
-                    }
-                }
-                transacciones!!.isEmpty() -> {
+                transacciones.isEmpty() -> {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -156,17 +144,17 @@ fun PantallaAnalisis(cuenta: String, onBack: () -> Unit) {
                     }
                 }
                 else -> {
-                    val fechas = transacciones!!.map { it.fecha }
+                    val fechas = transacciones.map { it.fecha }
 
                     var fechaInicioIndex by remember { mutableIntStateOf(0) }
                     var fechaFinIndex by remember { mutableIntStateOf(fechas.size - 1) }
                     val (fechasFiltradas, totalesFiltrados) = remember(fechaInicioIndex, fechaFinIndex, transacciones) {
-                        if (transacciones!!.isEmpty()) {
+                        if (transacciones.isEmpty()) {
                             Pair(emptyList(), emptyList())
                         } else {
                             val inicio = fechaInicioIndex.coerceAtMost(fechaFinIndex)
-                            val fin = (fechaFinIndex + 1).coerceAtMost(transacciones!!.size)
-                            val filtered = transacciones!!.subList(inicio, fin)
+                            val fin = (fechaFinIndex + 1).coerceAtMost(transacciones.size)
+                            val filtered = transacciones.subList(inicio, fin)
                             Pair(
                                 filtered.map { it.fecha },
                                 filtered.map { it.total }
@@ -192,12 +180,11 @@ fun PantallaAnalisis(cuenta: String, onBack: () -> Unit) {
 
 @Composable
 fun MesesButton(
-    fechas: List<LocalDate>,
+    fechas: List<String>,
     selectedIndex: Int = 0,
-    onDateSelected: (Int, LocalDate) -> Unit,
+    onDateSelected: (Int, String) -> Unit,
     label: String = "Mes"
 ) {
-    val fechasStr = fechas.map { it.toString() }
     val isDropDownExpanded = remember { mutableStateOf(false) }
 
     Box {
@@ -208,7 +195,7 @@ fun MesesButton(
                 .padding(5.dp)
         ) {
             Text(
-                text = if (fechasStr.isNotEmpty()) fechasStr[selectedIndex] else label,
+                text = if (fechas.isNotEmpty()) fechas[selectedIndex] else label,
                 color = ColorExtra2
             )
             Icon(
@@ -223,7 +210,7 @@ fun MesesButton(
                 isDropDownExpanded.value = false
             }
         ) {
-            fechasStr.forEachIndexed { index, dateStr ->
+            fechas.forEachIndexed { index, dateStr ->
                 DropdownMenuItem(
                     text = { Text(dateStr, color = ColorExtra2) },
                     onClick = {
@@ -237,7 +224,7 @@ fun MesesButton(
 }
 
 @Composable
-fun GraficoLineas(fechas: List<LocalDate>, montos: List<Int>) {
+fun GraficoLineas(fechas: List<String>, montos: List<Int>) {
     AndroidView(
         factory = { context ->
             val linechart = LineChart(context)
@@ -327,10 +314,3 @@ fun DetalleButton() {
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview4() {
-    AppTheme {
-        PantallaAnalisis(cuenta = "Cuenta 1", onBack = {})
-    }
-}

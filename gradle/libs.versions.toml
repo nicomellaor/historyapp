@@ -16,7 +16,8 @@ mpandroidchart = "v3.1.0"
 runtimeLivedata = "1.8.2"
 firebaseBom = "33.15.0" # Versión del BOM de Firebase (módulo de gestión de dependencias)
 services = "4.4.2" # Versión del plugin Google Services
-navigation = "2.7.7" # Versión de Jetpack Navigation Compose
+navigation = "2.7.7"
+firebaseFirestoreKtx = "25.1.4" # Versión de Jetpack Navigation Compose
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -41,7 +42,8 @@ material3 = { module = "androidx.compose.material3:material3", version.ref = "ma
 mpandroidchart = { module = "com.github.PhilJay:MPAndroidChart", version.ref = "mpandroidchart" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" } #BOM (Bill of Materials) de Firebase. Asegura que todas las librerías Firebase usen versiones compatibles.
 firebase-auth = { module = "com.google.firebase:firebase-auth-ktx" } #Cliente de autenticación de Firebase para Kotlin
-androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigation" } #Librería oficial para navegación en Jetpack Compose.
+androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigation" }
+firebase-firestore-ktx = { group = "com.google.firebase", name = "firebase-firestore-ktx", version.ref = "firebaseFirestoreKtx" } #Librería oficial para navegación en Jetpack Compose.
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -4,6 +4,7 @@ import Account
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -38,11 +39,11 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,8 +59,7 @@ import com.example.app.ui.theme.AppTheme
 import com.example.app.ui.theme.ColorBoton
 import com.example.app.ui.theme.ColorFondo
 import com.google.firebase.auth.FirebaseAuth
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
+import com.google.firebase.firestore.FirebaseFirestore
 
 class MainActivity : ComponentActivity() {
     private lateinit var auth: FirebaseAuth
@@ -71,7 +71,7 @@ class MainActivity : ComponentActivity() {
             // No hay usuario logueado, ir a AccSelect
             val intent = Intent(this, AccSelect::class.java)
             startActivity(intent)
-            finish() // Importante: cerrar MainActivity
+            finish() // Cerrar MainActivity
             return
         }
         enableEdgeToEdge()
@@ -87,18 +87,38 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun PantallaInicio (auth: FirebaseAuth){
     val context = LocalContext.current
-    // Instancia de DataStore
+    /* Instancia de DataStore
     val accountsPreferences = AccountsPreferences(context)
     val scope = rememberCoroutineScope()
+    val nombres by accountsPreferences.accountNamesFlow.collectAsState(initial = emptyList()) */
 
-    val nombres by accountsPreferences.accountNamesFlow.collectAsState(initial = emptyList())
+    // Conexión con Firebase Firestore
+    val cuentas = remember { mutableStateListOf<Account>() }
+    val db = FirebaseFirestore.getInstance()
+    val userId = getCurrentUserUID()
+
+    LaunchedEffect(Unit) {
+        db.collection("cuentas")
+            .whereEqualTo("userId", userId)
+            .get()
+            .addOnSuccessListener { result ->
+                cuentas.clear()
+                for (document in result) {
+                    val cuenta = document.toObject(Account::class.java)
+                    cuentas.add(cuenta)
+                }
+            }
+            .addOnFailureListener {
+                Log.e("Firestore", "Error al obtener datos", it)
+            }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = ColorFondo,
         floatingActionButton = {
             Column (verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                AgregarButton(accountsPreferences, scope)
+                AgregarButton(cuentas)
                 CerrarSesionButton(context, auth)
             }
         },
@@ -135,12 +155,12 @@ fun PantallaInicio (auth: FirebaseAuth){
             {
                 Text(text="Tus Cuentas", fontWeight = FontWeight.Medium, fontSize = 20.sp, color = ColorBoton)
                 Spacer(modifier = Modifier.height(20.dp))
-                nombres.forEach { cuenta ->
+                cuentas.forEach { cuenta ->
                     Button(
                         onClick = { navigateToLogin(context, cuenta) },
                         colors = ButtonDefaults.buttonColors(containerColor = ColorBoton)
                     ) {
-                        Text(cuenta, color = Color.White)
+                        Text(cuenta.nombre, color = Color.White)
                     }
                 }
             }
@@ -168,10 +188,12 @@ fun CerrarSesionButton(context: Context, auth: FirebaseAuth){
 }
 
 @Composable
-fun AgregarButton(accountsPreferences: AccountsPreferences, scope: CoroutineScope) {
+fun AgregarButton(cuentas: List<Account>) {
     var showDialog by remember { mutableStateOf(false) }
     var nombre by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    val id = generarIdCuenta(cuentas)
+    val userId = getCurrentUserUID()
 
     Button(
         onClick = { showDialog = true  },
@@ -225,7 +247,8 @@ fun AgregarButton(accountsPreferences: AccountsPreferences, scope: CoroutineScop
                     onClick = {
                         if (nombre.isNotBlank() && password.isNotBlank()) {
                             // Lógica para guardar
-                            val cuenta = Account(nombre.trim(), password)
+                            val cuenta = Account(id, userId!!, nombre.trim(), password)
+                            /* Con DataStore
                             scope.launch {
                                 try {
                                     accountsPreferences.addAccount(cuenta)
@@ -235,7 +258,17 @@ fun AgregarButton(accountsPreferences: AccountsPreferences, scope: CoroutineScop
                                 } catch (e: Exception) {
                                     println("Exception message: ${e.message}")
                                 }
-                            }
+                            }*/
+                            // Con Firebase FireStore
+                            agregarCuenta(
+                                cuenta = cuenta,
+                                onSuccess = {
+                                    nombre = ""
+                                    password = ""
+                                    showDialog = false
+                                },
+                                onError = { Log.e("Firestore", "Error al crear cuenta", it) }
+                            )
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = ColorBoton)
@@ -258,9 +291,40 @@ fun AgregarButton(accountsPreferences: AccountsPreferences, scope: CoroutineScop
     }
 }
 
-fun navigateToLogin(context: Context, cuenta: String){
+fun agregarCuenta(cuenta: Account, onSuccess: () -> Unit, onError: (Exception) -> Unit) {
+    val db = FirebaseFirestore.getInstance()
+    db.collection("cuentas")
+        .document(cuenta.id)
+        .set(cuenta)
+        .addOnSuccessListener {
+            onSuccess()
+        }
+        .addOnFailureListener { exception ->
+            onError(exception)
+        }
+}
+
+fun generarIdCuenta(cuentas: List<Account>): String {
+    val idsExistentes = cuentas.map { it.id }
+    var numero = 1
+    var nuevoId: String
+
+    do {
+        nuevoId = "cuenta$numero"
+        numero++
+    } while (nuevoId in idsExistentes)
+
+    return nuevoId
+}
+
+fun navigateToLogin(context: Context, cuenta: Account){
     val intent = Intent(context, LogIn::class.java).apply {
         putExtra("cuenta", cuenta)
     }
     context.startActivity(intent)
+}
+
+fun getCurrentUserUID(): String? {
+    val auth = FirebaseAuth.getInstance()
+    return auth.currentUser?.uid
 }
