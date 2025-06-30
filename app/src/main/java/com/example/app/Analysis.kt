@@ -1,6 +1,6 @@
 package com.example.app
 
-import Account
+import AccountViewModel
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -33,6 +33,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -63,15 +64,13 @@ import java.time.format.DateTimeFormatter
 class Analysis : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        @Suppress("DEPRECATION")
-        val cuenta = intent.getParcelableExtra<Account>("cuenta")
+        val cuenta = intent.getStringExtra("cuenta") ?: "Desconocido"
         enableEdgeToEdge()
         setContent {
             AppTheme {
-                if (cuenta != null) {
-                    PantallaAnalisis (cuenta) {
-                        finish()
-                    }
+                val viewModel = remember { AccountViewModel() }
+                PantallaAnalisis (cuenta, viewModel) {
+                    finish()
                 }
             }
         }
@@ -80,11 +79,16 @@ class Analysis : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PantallaAnalisis(cuenta: Account, onBack: () -> Unit) {
-    // val context = LocalContext.current
-    // Instancia de DataStore
-    // val accountsPreferences = AccountsPreferences(context)
-    // val transacciones by accountsPreferences.getAccountTransactionsFlow(cuenta).collectAsState(initial = null)
+fun PantallaAnalisis(nombreCuenta: String, viewModel: AccountViewModel, onBack: () -> Unit) {
+    // Instancia de Firebase Firestore
+    val cuenta by viewModel.cuenta
+    val userId = getCurrentUserUID()
+
+    LaunchedEffect(Unit) {
+        if (userId != null) {
+            viewModel.observarCuenta(userId, nombreCuenta)
+        }
+    }
     val transacciones = cuenta.transacciones
 
     Scaffold (
@@ -171,7 +175,6 @@ fun PantallaAnalisis(cuenta: Account, onBack: () -> Unit) {
                     DetalleButton()
                     Spacer(modifier = Modifier.height(20.dp))
                     GraficoLineas(fechasFiltradas, totalesFiltrados)
-                    //GraficoLineas(fechas, totales)
                 }
             }
         }

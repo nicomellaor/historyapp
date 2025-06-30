@@ -1,6 +1,7 @@
 package com.example.app
 
 import Account
+import AccountViewModel
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -41,7 +42,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -77,7 +77,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AppTheme {
-                PantallaInicio(auth)
+                val viewModel = remember { AccountViewModel() }
+                PantallaInicio(auth, viewModel)
             }
         }
     }
@@ -85,32 +86,17 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PantallaInicio (auth: FirebaseAuth){
+fun PantallaInicio (auth: FirebaseAuth, viewModel: AccountViewModel){
     val context = LocalContext.current
-    /* Instancia de DataStore
-    val accountsPreferences = AccountsPreferences(context)
-    val scope = rememberCoroutineScope()
-    val nombres by accountsPreferences.accountNamesFlow.collectAsState(initial = emptyList()) */
 
     // Conexión con Firebase Firestore
-    val cuentas = remember { mutableStateListOf<Account>() }
-    val db = FirebaseFirestore.getInstance()
+    val cuentas by viewModel.cuentas
     val userId = getCurrentUserUID()
 
     LaunchedEffect(Unit) {
-        db.collection("cuentas")
-            .whereEqualTo("userId", userId)
-            .get()
-            .addOnSuccessListener { result ->
-                cuentas.clear()
-                for (document in result) {
-                    val cuenta = document.toObject(Account::class.java)
-                    cuentas.add(cuenta)
-                }
-            }
-            .addOnFailureListener {
-                Log.e("Firestore", "Error al obtener datos", it)
-            }
+        if (userId != null) {
+            viewModel.observarCuentasPorUsuario(userId)
+        }
     }
 
     Scaffold(
@@ -157,7 +143,7 @@ fun PantallaInicio (auth: FirebaseAuth){
                 Spacer(modifier = Modifier.height(20.dp))
                 cuentas.forEach { cuenta ->
                     Button(
-                        onClick = { navigateToLogin(context, cuenta) },
+                        onClick = { navigateToLogin(context, cuenta.nombre) },
                         colors = ButtonDefaults.buttonColors(containerColor = ColorBoton)
                     ) {
                         Text(cuenta.nombre, color = Color.White)
@@ -246,20 +232,8 @@ fun AgregarButton(cuentas: List<Account>) {
                 Button(
                     onClick = {
                         if (nombre.isNotBlank() && password.isNotBlank()) {
-                            // Lógica para guardar
+                            // Lógica para guardar con Firebase FireStore
                             val cuenta = Account(id, userId!!, nombre.trim(), password)
-                            /* Con DataStore
-                            scope.launch {
-                                try {
-                                    accountsPreferences.addAccount(cuenta)
-                                    nombre = ""
-                                    password = ""
-                                    showDialog = false
-                                } catch (e: Exception) {
-                                    println("Exception message: ${e.message}")
-                                }
-                            }*/
-                            // Con Firebase FireStore
                             agregarCuenta(
                                 cuenta = cuenta,
                                 onSuccess = {
@@ -317,7 +291,7 @@ fun generarIdCuenta(cuentas: List<Account>): String {
     return nuevoId
 }
 
-fun navigateToLogin(context: Context, cuenta: Account){
+fun navigateToLogin(context: Context, cuenta: String){
     val intent = Intent(context, LogIn::class.java).apply {
         putExtra("cuenta", cuenta)
     }

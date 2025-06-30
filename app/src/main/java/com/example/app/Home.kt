@@ -1,6 +1,7 @@
 package com.example.app
 
 import Account
+import AccountViewModel
 import TransactionRecord
 import android.content.Context
 import android.content.Intent
@@ -42,6 +43,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,15 +72,13 @@ import kotlin.math.abs
 class Home : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        @Suppress("DEPRECATION")
-        val cuenta = intent.getParcelableExtra<Account>("cuenta")
+        val cuenta = intent.getStringExtra("cuenta") ?: "Desconocido"
         enableEdgeToEdge()
         setContent {
             AppTheme {
-                if (cuenta != null) {
-                    HomePage(cuenta) {
-                        finish()
-                    }
+                val viewModel = remember { AccountViewModel() }
+                HomePage(cuenta, viewModel) {
+                    finish()
                 }
             }
         }
@@ -87,14 +87,20 @@ class Home : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomePage(cuenta: Account, onBack: () -> Unit) {
+fun HomePage(nombreCuenta: String, viewModel: AccountViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
-    /* Instancia de DataStore
-    val accountsPreferences = AccountsPreferences(context)
-    val scope = rememberCoroutineScope()*/
+
+    // Instancia de Firebase Firestore
+    val cuenta by viewModel.cuenta
+    val userId = getCurrentUserUID()
+
+    LaunchedEffect(Unit) {
+        if (userId != null) {
+            viewModel.observarCuenta(userId, nombreCuenta)
+        }
+    }
 
     // Obtener transacciones y pasar a Map
-    // val transacciones by accountsPreferences.getAccountTransactionsFlow(cuenta).collectAsState(initial = emptyList())
     val transacciones = cuenta.transacciones
     val transaccionesMap: List<Map<String, Any>> = transacciones.map { it.toMap() }
     Scaffold(
@@ -149,7 +155,7 @@ fun HomePage(cuenta: Account, onBack: () -> Unit) {
             InfoCuenta(transaccionesMap)
             Spacer(modifier = Modifier.height(20.dp))
             Button(
-                onClick = { navigateToHistory(context, cuenta) },
+                onClick = { navigateToHistory(context, cuenta.nombre) },
                 colors = ButtonDefaults.buttonColors(containerColor = ColorBoton)
             )
             {
@@ -157,7 +163,7 @@ fun HomePage(cuenta: Account, onBack: () -> Unit) {
             }
             Spacer(modifier = Modifier.height(20.dp))
             Button(
-                onClick = { navigateToAnalysis(context, cuenta) },
+                onClick = { navigateToAnalysis(context, cuenta.nombre) },
                 colors = ButtonDefaults.buttonColors(containerColor = ColorBoton)
             )
             {
@@ -293,19 +299,6 @@ fun AgregarMovButton(transacciones: List<Map<String, Any>>, cuenta: Account) {
                     onClick = {
                         // Lógica para guardar
                         if (monto.isNotBlank() && mensaje.isNotBlank()){
-                            /*scope.launch {
-                                try {
-                                    val id = accountsPreferences.generateId(cuenta)
-                                    val transaction = TransactionRecord(id, monto.toInt(), mensaje, fecha, total)
-                                    accountsPreferences.addTransaction(cuenta, transaction)
-                                    monto = ""
-                                    mensaje = ""
-                                    fecha = LocalDate.now()
-                                    showDialog = false
-                                } catch (e: Exception) {
-                                    println("Exception message: ${e.message}")
-                                }
-                            }*/
                             val id = generarIdTransaccion(transacciones)
                             val transaction = TransactionRecord(id, monto.toInt(), mensaje, fecha.toString(), total)
                             agregarTransaccion(
@@ -357,12 +350,6 @@ fun EliminarButton(cuenta: Account, context: Context) {
             confirmButton = {
                 Button(
                     onClick = {
-                        // Lógica para eliminar
-                        /*scope.launch {
-                            accountsPreferences.deleteAccount(cuenta)
-                            showDialog = false
-                            navigatetoMain(context)
-                        }*/
                         eliminarCuenta(
                             cuenta = cuenta,
                             onSuccess = {
@@ -435,14 +422,14 @@ fun navigatetoMain(context: Context) {
     context.startActivity(intent)
 }
 
-fun navigateToAnalysis(context: Context, cuenta: Account) {
+fun navigateToAnalysis(context: Context, cuenta: String) {
     val intent = Intent(context, Analysis::class.java).apply {
         putExtra("cuenta", cuenta)
     }
     context.startActivity(intent)
 }
 
-fun navigateToHistory(context: Context, cuenta: Account) {
+fun navigateToHistory(context: Context, cuenta: String) {
     val intent = Intent(context, History::class.java).apply {
         putExtra("cuenta", cuenta)
     }

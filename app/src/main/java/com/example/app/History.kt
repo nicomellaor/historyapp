@@ -1,6 +1,7 @@
 package com.example.app
 
 import Account
+import AccountViewModel
 import TransactionRecord
 import android.os.Bundle
 import android.util.Log
@@ -37,6 +38,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,7 +55,6 @@ import com.example.app.ui.theme.AppTheme
 import com.example.app.ui.theme.ColorBloque
 import com.example.app.ui.theme.ColorBoton
 import com.example.app.ui.theme.ColorFondo
-import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import toMap
 import java.time.LocalDate
@@ -61,15 +62,13 @@ import java.time.LocalDate
 class History : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        @Suppress("DEPRECATION")
-        val cuenta = intent.getParcelableExtra<Account>("cuenta")
+        val cuenta = intent.getStringExtra("cuenta") ?: "Desconocido"
         enableEdgeToEdge()
         setContent {
             AppTheme {
-                if (cuenta != null) {
-                    Historial (cuenta = cuenta) {
-                        finish()
-                    }
+                val viewModel = remember { AccountViewModel() }
+                Historial (cuenta, viewModel) {
+                    finish()
                 }
             }
         }
@@ -79,12 +78,17 @@ class History : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Historial(cuenta: Account, onBack: () -> Unit) {
-    // val context = LocalContext.current
-    // Instancia de DataStore
-    // val accountsPreferences = AccountsPreferences(context)
+fun Historial(nombreCuenta: String, viewModel: AccountViewModel, onBack: () -> Unit) {
+    // Instancia de Firebase Firestore
+    val cuenta by viewModel.cuenta
+    val userId = getCurrentUserUID()
 
-    // val transacciones by accountsPreferences.getAccountTransactionsFlow(cuenta).collectAsState(initial = emptyList())
+    LaunchedEffect(Unit) {
+        if (userId != null) {
+            viewModel.observarCuenta(userId, nombreCuenta)
+        }
+    }
+
     val transacciones = cuenta.transacciones
     val transaccionesMap: List<Map<String, Any>> = transacciones.map { it.toMap() }
 
@@ -153,7 +157,6 @@ fun InfoCuentaGrande(transaccionesMap: List<Map<String, Any>>, cuenta: Account){
     var mostrarDialogo by remember { mutableStateOf(false) }
     var itemSeleccionado by remember { mutableStateOf<Map<String, Any>?>(null) }
     var enEdicion by remember { mutableStateOf(false) }
-    // val scope = rememberCoroutineScope()
     Column(
         modifier = Modifier
             .background(
@@ -278,18 +281,6 @@ fun InfoCuentaGrande(transaccionesMap: List<Map<String, Any>>, cuenta: Account){
                 },
                 confirmButton = {
                     Button(onClick = {
-                        /*scope.launch {
-                            val updatedTransaction = TransactionRecord(
-                                id = itemSeleccionado!!["id"].toString().toInt(),
-                                monto = nuevoMonto.toInt(),
-                                mensaje = nuevoNombre,
-                                fecha = LocalDate.parse(nuevaFecha),
-                                total = itemSeleccionado!!["total"].toString().toInt()
-                            )
-                            accountsPreferences.updateTransaction(cuenta, updatedTransaction)
-                            enEdicion = false
-                            itemSeleccionado = null
-                        }*/
                         val updatedTransaction = TransactionRecord(
                             id = itemSeleccionado!!["id"].toString().toInt(),
                             monto = nuevoMonto.toInt(),

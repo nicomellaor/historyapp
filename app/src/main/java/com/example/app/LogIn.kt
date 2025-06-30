@@ -1,6 +1,7 @@
 package com.example.app
 
 import Account
+import AccountViewModel
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -35,6 +36,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,15 +60,13 @@ import com.google.firebase.firestore.FirebaseFirestore
 class LogIn : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        @Suppress("DEPRECATION")
-        val cuenta = intent.getParcelableExtra<Account>("cuenta")
+        val cuenta = intent.getStringExtra("cuenta") ?: "Desconocido"
         enableEdgeToEdge()
         setContent {
             AppTheme {
-                if (cuenta != null) {
-                    PantallaLogin(cuenta) {
-                        finish()
-                    }
+                val viewModel = remember { AccountViewModel() }
+                PantallaLogin(cuenta, viewModel) {
+                    finish()
                 }
             }
         }
@@ -75,17 +75,21 @@ class LogIn : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PantallaLogin(cuenta: Account, onBack: () -> Unit) {
+fun PantallaLogin(nombreCuenta: String, viewModel: AccountViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     var password by rememberSaveable { mutableStateOf("") }
 
-    /* Instancia de DataStore
-    val accountsPreferences = AccountsPreferences(context)
-    val scope = rememberCoroutineScope()
-    val accountPassword by accountsPreferences.getAccountPasswordFlow(cuenta).collectAsState(initial = null) */
-
     // Instancia de Firebase Firestore
-    val accountPassword = cuenta.contraseña
+    val cuenta by viewModel.cuenta
+    val accountPassword = cuenta?.contraseña
+    val userId = getCurrentUserUID()
+
+    LaunchedEffect(Unit) {
+        if (userId != null) {
+            viewModel.observarCuenta(userId, nombreCuenta)
+        }
+    }
+
 
     Scaffold (
         modifier = Modifier.fillMaxSize(),
@@ -128,7 +132,7 @@ fun PantallaLogin(cuenta: Account, onBack: () -> Unit) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = cuenta.nombre, fontWeight = FontWeight.Medium, fontSize = 20.sp, color = ColorBoton)
+            Text(text = cuenta!!.nombre, fontWeight = FontWeight.Medium, fontSize = 20.sp, color = ColorBoton)
             Spacer(modifier = Modifier.height(20.dp))
             Text(text = "Contraseña/PIN", color = Color.White)
             TextField(
@@ -147,7 +151,7 @@ fun PantallaLogin(cuenta: Account, onBack: () -> Unit) {
             Button(
                 onClick = {
                     if (password == accountPassword) {
-                        navigateToHomePage(context, cuenta)
+                        navigateToHomePage(context, cuenta!!.nombre)
                         password = ""
                     }
                 },
@@ -156,7 +160,7 @@ fun PantallaLogin(cuenta: Account, onBack: () -> Unit) {
                 Text("Ingresar")
             }
             Spacer(modifier = Modifier.height(200.dp))
-            PasswordButton(cuenta)
+            PasswordButton(cuenta!!)
         }
     }
 }
@@ -166,7 +170,6 @@ fun PasswordButton(cuenta: Account) {
     var showDialog by remember { mutableStateOf(false) }
     var password by remember { mutableStateOf("") }
 
-    //val transacciones by accountsPreferences.getAccountTransactionsFlow(cuenta).collectAsState(initial = emptyList())
     val nombre = cuenta.nombre
 
     TextButton(onClick = { showDialog = true }) {
@@ -198,16 +201,6 @@ fun PasswordButton(cuenta: Account) {
                     onClick = {
                         // Lógica para guardar
                         if (nombre.isNotBlank() && password.isNotBlank()) {
-                            /*val cuentaObject = Account(nombre, password, transacciones)
-                            scope.launch {
-                                try {
-                                    accountsPreferences.updateAccount(cuentaObject)
-                                    password = ""
-                                    showDialog = false
-                                } catch (e: Exception) {
-                                    println("Exception message: ${e.message}")
-                                }
-                            }*/
                             cambiarContrasena(
                                 cuenta = cuenta,
                                 password = password,
@@ -248,7 +241,7 @@ fun cambiarContrasena(cuenta: Account, password: String, onSuccess: () -> Unit, 
         }
 }
 
-fun navigateToHomePage(context: Context, cuenta: Account) {
+fun navigateToHomePage(context: Context, cuenta: String) {
     val intent = Intent(context, Home::class.java).apply {
         putExtra("cuenta", cuenta)
     }

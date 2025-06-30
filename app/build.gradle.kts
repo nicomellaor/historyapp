@@ -69,4 +69,5 @@ dependencies {
     implementation(platform(libs.firebase.bom)) //El BOM asegura que todas las dependencias de Firebase usen versiones compatibles entre sí.
     implementation(libs.firebase.auth) //que permite autenticar usuarios en tu app con Firebase
     implementation(libs.androidx.navigation.compose) //Permite manejar rutas y pantallas (composable("login") { ... }) dentro de una app Compose.
+    implementation(libs.androidx.lifecycle.viewmodel.compose.v270)
 }
