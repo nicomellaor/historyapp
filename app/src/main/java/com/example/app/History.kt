@@ -219,9 +219,6 @@ fun InfoCuentaGrande(transaccionesMap: List<Map<String, Any>>, cuenta: Account){
                         Button(onClick = {
                             itemSeleccionado?.get("id")?.let { id ->
                                 if (id is Int) {
-                                    /*scope.launch {
-                                        accountsPreferences.deleteTransaction(cuenta,id)
-                                    }*/
                                     eliminarTransaccion(
                                         cuenta,
                                         id,
@@ -320,16 +317,31 @@ fun actualizarTransaccion(cuenta: Account, transaccionActualizada: TransactionRe
             val account = document.toObject(Account::class.java)
             if (account != null) {
                 // Actualizar la transacción en la lista
-                val transaccionesActualizadas = account.transacciones.map {
-                    if (it.id == transaccionActualizada.id) transaccionActualizada else it
+                val transaccionesActualizadas = account.transacciones.map { transaccion ->
+                    if (transaccion.id == transaccionActualizada.id) {
+                        transaccionActualizada
+                    } else {
+                        transaccion
+                    }
                 }
 
-                // Guardar la lista actualizada
+                // Recalcular el total para TODAS las transacciones
+                val transaccionesConTotales = mutableListOf<TransactionRecord>()
+                var total = 0
+
+                transaccionesActualizadas.forEach { t ->
+                    total += t.monto
+                    transaccionesConTotales.add(t.copy(total = total))
+                }
+
+                // Guardar en Firebase
                 db.collection("cuentas")
                     .document(cuenta.id)
-                    .update("transacciones", transaccionesActualizadas.map { it.toMap() })
+                    .update("transacciones", transaccionesConTotales.map { it.toMap() })
                     .addOnSuccessListener { onSuccess() }
                     .addOnFailureListener { onError(it) }
+            } else {
+                onError(Exception("Cuenta no encontrada"))
             }
         }
         .addOnFailureListener { onError(it) }
@@ -348,10 +360,19 @@ fun eliminarTransaccion(cuenta: Account, transaccionId: Int, onSuccess: () -> Un
                     it.id != transaccionId
                 }
 
+                // Recalcular el total para TODAS las transacciones
+                val transaccionesConTotales = mutableListOf<TransactionRecord>()
+                var total = 0
+
+                transaccionesFiltradas.forEach { t ->
+                    total += t.monto
+                    transaccionesConTotales.add(t.copy(total = total))
+                }
+
                 // Actualizar con la lista filtrada
                 db.collection("cuentas")
                     .document(cuenta.id)
-                    .update("transacciones", transaccionesFiltradas.map { it.toMap() })
+                    .update("transacciones", transaccionesConTotales.map { it.toMap() })
                     .addOnSuccessListener { onSuccess() }
                     .addOnFailureListener { onError(it) }
             }
@@ -359,11 +380,8 @@ fun eliminarTransaccion(cuenta: Account, transaccionId: Int, onSuccess: () -> Un
         .addOnFailureListener { onError(it) }
 }
 
-@Composable
 fun totalCuenta(cuenta: List<Map<String, Any>>): Int {
-    var total = 0
-    for (item in cuenta){
-        total += item["monto"].toString().toInt()
+    return cuenta.sumOf { item ->
+        item["monto"].toString().toInt()
     }
-    return total
 }

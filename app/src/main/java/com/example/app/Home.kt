@@ -229,7 +229,7 @@ fun AgregarMovButton(transacciones: List<Map<String, Any>>, cuenta: Account) {
     var fecha by remember { mutableStateOf(LocalDate.now()) }
     val formatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
     var fechaText by remember { mutableStateOf(LocalDate.now().format(formatter)) }
-    val total = totalCuenta(transacciones)
+    val total = 0
 
     Button(
         onClick = { showDialog = true  },
@@ -378,15 +378,43 @@ fun EliminarButton(cuenta: Account, context: Context) {
 
 fun agregarTransaccion(cuenta: Account, transaccion: TransactionRecord, onSuccess: () -> Unit, onError: (Exception) -> Unit) {
     val db = FirebaseFirestore.getInstance()
+    // Obtener las transacciones actuales para calcular el total correcto
     db.collection("cuentas")
         .document(cuenta.id)
-        .update("transacciones", FieldValue.arrayUnion(transaccion.toMap()))
-        .addOnSuccessListener {
-            onSuccess()
+        .get()
+        .addOnSuccessListener { document ->
+            val account = document.toObject(Account::class.java)
+            if (account != null) {
+                // Calcular el total DESPUÉS de agregar
+                val transacciones = account.transacciones
+                val transaccionesMap: List<Map<String, Any>> = transacciones.map { it.toMap() }
+                val totalActual = totalCuenta(transaccionesMap)
+                val nuevoTotal = totalActual + transaccion.monto
+
+                // Crear la transacción con el total correcto
+                val nuevaTransaccion = TransactionRecord(
+                    id = transaccion.id,
+                    monto = transaccion.monto,
+                    mensaje = transaccion.mensaje,
+                    fecha = transaccion.fecha,
+                    total = nuevoTotal
+                )
+
+                // Agregar a Firebase
+                db.collection("cuentas")
+                    .document(cuenta.id)
+                    .update("transacciones", FieldValue.arrayUnion(nuevaTransaccion.toMap()))
+                    .addOnSuccessListener {
+                        onSuccess()
+                    }
+                    .addOnFailureListener { exception ->
+                        onError(exception)
+                    }
+            } else {
+                onError(Exception("Cuenta no encontrada"))
+            }
         }
-        .addOnFailureListener { exception ->
-            onError(exception)
-        }
+        .addOnFailureListener { onError(it) }
 }
 
 fun eliminarCuenta(cuenta: Account, onSuccess: () -> Unit, onError: (Exception) -> Unit) {
