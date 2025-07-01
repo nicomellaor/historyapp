@@ -17,6 +17,11 @@ class AccountViewModel : ViewModel() {
     private val _cuentas = mutableStateOf<List<Account>>(emptyList())
     val cuentas: State<List<Account>> = _cuentas
 
+    private var userAccountsListener: ListenerRegistration? = null
+
+    private val _todasLasCuentas = mutableStateOf<List<Account>>(emptyList())
+    val todasLasCuentas: State<List<Account>> = _todasLasCuentas
+
     private var allAccountsListener: ListenerRegistration? = null
 
     private val _isLoading = mutableStateOf(false)
@@ -65,9 +70,9 @@ class AccountViewModel : ViewModel() {
     fun observarCuentasPorUsuario(userId: String) {
         _isLoading.value = true
 
-        allAccountsListener?.remove()
+        userAccountsListener?.remove()
 
-        allAccountsListener = db.collection("cuentas")
+        userAccountsListener = db.collection("cuentas")
             .whereEqualTo("userId", userId)
             .addSnapshotListener { snapshots, error ->
                 _isLoading.value = false
@@ -82,6 +87,29 @@ class AccountViewModel : ViewModel() {
                         document.toObject(Account::class.java)
                     }
                     _cuentas.value = cuentas
+                }
+            }
+    }
+
+    fun observarTodasLasCuentas() {
+        _isLoading.value = true
+
+        allAccountsListener?.remove()
+
+        allAccountsListener = db.collection("cuentas")
+            .addSnapshotListener { snapshots, error ->
+                _isLoading.value = false
+
+                if (error != null) {
+                    _error.value = "Error: ${error.message}"
+                    return@addSnapshotListener
+                }
+
+                if (snapshots != null) {
+                    val todasLasCuentas = snapshots.documents.mapNotNull { document ->
+                        document.toObject(Account::class.java)
+                    }
+                    _todasLasCuentas.value = todasLasCuentas
                 }
             }
     }

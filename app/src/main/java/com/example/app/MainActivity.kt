@@ -60,6 +60,7 @@ import com.example.app.ui.theme.ColorBoton
 import com.example.app.ui.theme.ColorFondo
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import java.util.UUID
 
 class MainActivity : ComponentActivity() {
     private lateinit var auth: FirebaseAuth
@@ -104,7 +105,7 @@ fun PantallaInicio (auth: FirebaseAuth, viewModel: AccountViewModel){
         containerColor = ColorFondo,
         floatingActionButton = {
             Column (verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                AgregarButton(cuentas)
+                AgregarButton()
                 CerrarSesionButton(context, auth)
             }
         },
@@ -174,11 +175,10 @@ fun CerrarSesionButton(context: Context, auth: FirebaseAuth){
 }
 
 @Composable
-fun AgregarButton(cuentas: List<Account>) {
+fun AgregarButton() {
     var showDialog by remember { mutableStateOf(false) }
     var nombre by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    val id = generarIdCuenta(cuentas)
     val userId = getCurrentUserUID()
 
     Button(
@@ -233,6 +233,7 @@ fun AgregarButton(cuentas: List<Account>) {
                     onClick = {
                         if (nombre.isNotBlank() && password.isNotBlank()) {
                             // Lógica para guardar con Firebase FireStore
+                            val id = UUID.randomUUID().toString()
                             val cuenta = Account(id, userId!!, nombre.trim(), password)
                             agregarCuenta(
                                 cuenta = cuenta,
@@ -276,19 +277,6 @@ fun agregarCuenta(cuenta: Account, onSuccess: () -> Unit, onError: (Exception) -
         .addOnFailureListener { exception ->
             onError(exception)
         }
-}
-
-fun generarIdCuenta(cuentas: List<Account>): String {
-    val idsExistentes = cuentas.map { it.id }
-    var numero = 1
-    var nuevoId: String
-
-    do {
-        nuevoId = "cuenta$numero"
-        numero++
-    } while (nuevoId in idsExistentes)
-
-    return nuevoId
 }
 
 fun navigateToLogin(context: Context, cuenta: String){
